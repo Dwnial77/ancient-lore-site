@@ -1,4 +1,4 @@
-import { sql } from "drizzle-orm";
+import { inArray, sql } from "drizzle-orm";
 import { getDb, schema } from "@/db";
 import { fetchOpenDotaHeroes } from "./opendota";
 
@@ -24,7 +24,7 @@ export async function refreshHeroes(): Promise<number> {
   return rows.length;
 }
 
-/** Seed the hero cache on first use so a fresh deployment works before the first sync. */
+/** Seed the hero cache on first use so a fresh deployment works before any admin action. */
 export async function ensureHeroes(): Promise<void> {
   const db = getDb();
   const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(schema.heroes);
@@ -35,4 +35,13 @@ export async function ensureHeroes(): Promise<void> {
       console.error("[heroes] initial OpenDota fetch failed", err);
     }
   }
+}
+
+export async function heroSlugsForIds(ids: number[]): Promise<string[]> {
+  if (ids.length === 0) return [];
+  const rows = await getDb()
+    .select({ slug: schema.heroes.slug })
+    .from(schema.heroes)
+    .where(inArray(schema.heroes.id, ids));
+  return rows.map((r) => r.slug);
 }

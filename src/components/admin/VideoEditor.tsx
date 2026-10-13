@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import type { Role } from "@/db/schema";
-import { formatDate, formatDuration, ROLE_LABELS, youtubeUrl } from "@/lib/format";
+import { formatDate, formatDuration, parseDurationInput, ROLE_LABELS, youtubeUrl } from "@/lib/format";
 import type { AdminAppearance, AdminVideo, PickerHero } from "@/lib/queries";
 import { HeroPicker } from "./HeroPicker";
 
@@ -14,6 +14,12 @@ export function VideoEditor({ video, heroes }: { video: AdminVideo; heroes: Map<
   const [items, setItems] = useState<AdminAppearance[]>(video.appearances);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
+  const [editing, setEditing] = useState(video.durationSeconds === 0);
+  const [details, setDetails] = useState({
+    title: video.title,
+    date: video.publishedAt.slice(0, 10),
+    duration: video.durationSeconds ? formatDuration(video.durationSeconds) : "",
+  });
 
   const dirty = useMemo(() => JSON.stringify(items) !== JSON.stringify(video.appearances), [items, video.appearances]);
   const exclude = useMemo(() => new Set(items.map((i) => i.heroId)), [items]);
@@ -41,6 +47,38 @@ export function VideoEditor({ video, heroes }: { video: AdminVideo; heroes: Map<
     }
   }
 
+  async function saveDetails() {
+    const durationSeconds = parseDurationInput(details.duration);
+    if (durationSeconds === null) {
+      setStatus({ ok: false, text: "Duration must look like 18:42 or 1:02:03" });
+      return;
+    }
+    setSaving(true);
+    setStatus(null);
+    const res = await fetch("/api/admin/videos", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ videoId: video.youtubeId, title: details.title, publishedAt: details.date, durationSeconds }),
+    });
+    setSaving(false);
+    if (res.ok) {
+      setStatus({ ok: true, text: "Details saved" });
+      router.refresh();
+    } else {
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      setStatus({ ok: false, text: data.error ?? "Save failed" });
+    }
+  }
+
+  async function deleteVideo() {
+    if (!window.confirm(`Delete "${video.title}" from the site? (It stays on YouTube.)`)) return;
+    setSaving(true);
+    const res = await fetch(`/api/admin/videos?id=${encodeURIComponent(video.youtubeId)}`, { method: "DELETE" });
+    setSaving(false);
+    if (res.ok) router.refresh();
+    else setStatus({ ok: false, text: "Delete failed" });
+  }
+
   const reviewCount = items.filter((i) => i.needsReview).length;
 
   return (
@@ -54,8 +92,14 @@ export function VideoEditor({ video, heroes }: { video: AdminVideo; heroes: Map<
         </a>
         <div className="min-w-0 flex-1">
           <h3 className="line-clamp-2 font-medium text-parchment">{video.title}</h3>
-          <p className="mt-1 text-xs text-muted">
-            {formatDate(video.publishedAt)} · {formatDuration(video.durationSeconds)}
+          <p className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-muted">
+            <span>
+              {formatDate(video.publishedAt)}
+              {video.durationSeconds ? ` · ${formatDuration(video.durationSeconds)}` : ""}
+            </span>
+            <button type="button" onClick={() => setEditing((e) => !e)} className="text-amber/80 hover:text-amber">
+              ✎ {editing ? "Hide details" : "Edit details"}
+            </button>
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
             {items.length === 0 ? (
@@ -64,9 +108,56 @@ export function VideoEditor({ video, heroes }: { video: AdminVideo; heroes: Map<
             {reviewCount ? (
               <span className="rounded-full bg-amber/15 px-2 py-0.5 text-xs text-amber">{reviewCount} need review</span>
             ) : null}
+            {video.durationSeconds === 0 ? (
+              <span className="rounded-full bg-amber/15 px-2 py-0.5 text-xs text-amber">Duration missing</span>
+            ) : null}
           </div>
         </div>
       </div>
+
+      {editing ? (
+        <div className="mt-4 grid gap-3 rounded-lg border border-line/60 bg-ink/40 p-3 sm:grid-cols-[1fr_auto_auto]">
+          <label className="text-xs text-muted">
+            Title
+            <input
+              value={details.title}
+              onChange={(e) => setDetails((d) => ({ ...d, title: e.target.value }))}
+              className="mt-1 w-full rounded-md border border-line bg-ink px-2 py-1 text-sm text-parchment focus:border-amber focus:outline-none"
+            />
+          </label>
+          <label className="text-xs text-muted">
+            Published
+            <input
+              type="date"
+              value={details.date}
+              onChange={(e) => setDetails((d) => ({ ...d, date: e.target.value }))}
+              className="mt-1 block rounded-md border border-line bg-ink px-2 py-1 text-sm text-parchment [color-scheme:dark] focus:border-amber focus:outline-none"
+            />
+          </label>
+          <label className="text-xs text-muted">
+            Duration
+            <input
+              value={details.duration}
+              onChange={(e) => setDetails((d) => ({ ...d, duration: e.target.value }))}
+              placeholder="18:42"
+              className="mt-1 block w-24 rounded-md border border-line bg-ink px-2 py-1 text-sm tabular-nums text-parchment focus:border-amber focus:outline-none"
+            />
+          </label>
+          <div className="flex items-center gap-3 sm:col-span-3">
+            <button
+              type="button"
+              onClick={saveDetails}
+              disabled={saving}
+              className="rounded-md bg-amber/90 px-3 py-1 text-sm font-semibold text-ink hover:bg-amber disabled:opacity-50"
+            >
+              Save details
+            </button>
+            <button type="button" onClick={deleteVideo} disabled={saving} className="ml-auto text-sm text-str/80 hover:text-str">
+              Delete video
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {items.length > 0 ? (
         <ul className="mt-4 space-y-2">

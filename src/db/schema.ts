@@ -78,19 +78,6 @@ export const votes = pgTable(
   ],
 );
 
-export const syncRuns = pgTable("sync_runs", {
-  id: serial("id").primaryKey(),
-  source: text("source").notNull(), // 'manual' | 'cron'
-  status: text("status").notNull(), // 'ok' | 'error'
-  videosTotal: integer("videos_total").notNull().default(0),
-  videosNew: integer("videos_new").notNull().default(0),
-  suggestions: integer("suggestions").notNull().default(0),
-  heroesCount: integer("heroes_count").notNull().default(0),
-  error: text("error"),
-  startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
-  finishedAt: timestamp("finished_at", { withTimezone: true }),
-});
-
 export type Hero = typeof heroes.$inferSelect;
 export type Video = typeof videos.$inferSelect;
 export type Appearance = typeof appearances.$inferSelect;

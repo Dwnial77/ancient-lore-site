@@ -39,18 +39,24 @@ export function TopVotes({ items, variant }: { items: TopVote[]; variant: "list"
         <ol className="mt-6 space-y-3">
           {items.map((h, i) => (
             <li key={h.id}>
-              <Link href={`/hero/${h.slug}`} className="group grid grid-cols-[2rem_1.75rem_minmax(0,9rem)_1fr_3rem] items-center gap-3">
+              <Link
+                href={`/hero/${h.slug}`}
+                className="group grid grid-cols-[1.5rem_1.75rem_minmax(0,1fr)_2.5rem] items-center gap-x-3 gap-y-1.5 sm:grid-cols-[2rem_1.75rem_minmax(0,9rem)_1fr_3rem]"
+              >
                 <span className="font-display text-lg text-amber">{i + 1}</span>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={h.iconUrl} alt="" className="h-7 w-7" loading="lazy" />
                 <span className="truncate text-parchment group-hover:text-amber-soft">{h.name}</span>
-                <span className="h-2.5 overflow-hidden rounded-full bg-ink">
+                {/* On mobile the bar wraps onto its own row under the name. */}
+                <span className="col-start-3 row-start-2 h-2 overflow-hidden rounded-full bg-ink sm:col-start-auto sm:row-start-auto sm:h-2.5">
                   <span
                     className="block h-full rounded-full bg-gradient-to-r from-amber/60 to-amber transition-all duration-700 group-hover:shadow-[0_0_12px] group-hover:shadow-amber"
                     style={{ width: `${(h.votes / max) * 100}%` }}
                   />
                 </span>
-                <span className="text-right tabular-nums text-amber">{h.votes}</span>
+                <span className="col-start-4 row-start-1 text-right tabular-nums text-amber sm:col-start-auto sm:row-start-auto">
+                  {h.votes}
+                </span>
               </Link>
             </li>
           ))}

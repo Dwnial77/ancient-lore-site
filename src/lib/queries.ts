@@ -141,7 +141,7 @@ export type PickerHero = { id: number; slug: string; name: string; attribute: At
 export async function getAdminData() {
   await ensureHeroes();
   const db = getDb();
-  const [videoRows, appearanceRows, heroRows, [lastSync]] = await Promise.all([
+  const [videoRows, appearanceRows, heroRows] = await Promise.all([
     db.select().from(videos).orderBy(desc(videos.publishedAt)),
     db.select().from(appearances).orderBy(asc(appearances.createdAt)),
     db
@@ -154,7 +154,6 @@ export async function getAdminData() {
       })
       .from(heroes)
       .orderBy(asc(heroes.name)),
-    db.select().from(schema.syncRuns).orderBy(desc(schema.syncRuns.startedAt)).limit(1),
   ]);
 
   const byVideo = new Map<string, AdminAppearance[]>();
@@ -176,17 +175,6 @@ export async function getAdminData() {
   return {
     videos: adminVideos,
     heroes: heroRows as PickerHero[],
-    lastSync: lastSync
-      ? {
-          status: lastSync.status,
-          source: lastSync.source,
-          videosTotal: lastSync.videosTotal,
-          videosNew: lastSync.videosNew,
-          suggestions: lastSync.suggestions,
-          error: lastSync.error,
-          startedAt: lastSync.startedAt.toISOString(),
-        }
-      : null,
   };
 }
 

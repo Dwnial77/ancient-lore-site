@@ -21,19 +21,6 @@ CREATE TABLE "heroes" (
 	CONSTRAINT "heroes_slug_unique" UNIQUE("slug")
 );
 --> statement-breakpoint
-CREATE TABLE "sync_runs" (
-	"id" serial PRIMARY KEY NOT NULL,
-	"source" text NOT NULL,
-	"status" text NOT NULL,
-	"videos_total" integer DEFAULT 0 NOT NULL,
-	"videos_new" integer DEFAULT 0 NOT NULL,
-	"suggestions" integer DEFAULT 0 NOT NULL,
-	"heroes_count" integer DEFAULT 0 NOT NULL,
-	"error" text,
-	"started_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"finished_at" timestamp with time zone
-);
---> statement-breakpoint
 CREATE TABLE "videos" (
 	"youtube_id" text PRIMARY KEY NOT NULL,
 	"title" text NOT NULL,

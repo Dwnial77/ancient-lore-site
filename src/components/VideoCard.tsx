@@ -39,9 +39,11 @@ export function VideoCard({ video, showRole = false }: { video: HeroVideo; showR
             </svg>
           </span>
         </div>
-        <span className="absolute bottom-2 right-2 rounded bg-ink/85 px-1.5 py-0.5 text-xs font-medium tabular-nums text-parchment">
-          {formatDuration(video.durationSeconds)}
-        </span>
+        {video.durationSeconds > 0 ? (
+          <span className="absolute bottom-2 right-2 rounded bg-ink/85 px-1.5 py-0.5 text-xs font-medium tabular-nums text-parchment">
+            {formatDuration(video.durationSeconds)}
+          </span>
+        ) : null}
       </div>
       <div className="space-y-2 p-4">
         {showRole ? <RoleBadge role={video.role} /> : null}

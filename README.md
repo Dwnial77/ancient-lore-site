@@ -4,7 +4,7 @@ Website for the **Ancient Lore** YouTube channel (cinematic Dota 2 hero lore).
 The home page shows every Dota 2 hero. Heroes with episodes are highlighted; the rest are marked
 "Coming soon" and can be voted for.
 
-Stack: Next.js (App Router) · TypeScript · Tailwind CSS · Drizzle ORM · Neon Postgres · Vercel (ISR + Cron).
+Stack: Next.js (App Router) · TypeScript · Tailwind CSS · Drizzle ORM · Neon Postgres · Vercel (ISR).
 
 ---
 
@@ -13,15 +13,19 @@ Stack: Next.js (App Router) · TypeScript · Tailwind CSS · Drizzle ORM · Neon
 Open **`/admin`** on the live site and log in with your `ADMIN_PASSWORD`.
 You stay logged in for 7 days (secure, httpOnly cookie). On shared computers, use **Logout** in the top bar.
 
-### 1. Sync videos
-Press **⟳ Sync videos**. This imports every public upload from your channel through the YouTube Data API.
-Shorts and live streams are skipped, and videos you already imported get their titles and thumbnails updated.
-The sync also runs **automatically every day at 04:00 UTC** (Vercel Cron). It refreshes the hero list from
-OpenDota at the same time, so new heroes appear on their own.
+### 1. Add videos
+Paste one or more YouTube links into **Add videos** (one per line) and press **+ Add videos**.
+Any link format works: `youtube.com/watch?v=…`, `youtu.be/…`, `/shorts/…` or `/live/…`.
+The title, thumbnail, publish date and duration are filled in automatically. No YouTube API key is needed.
+
+- If YouTube doesn't give the date or duration, the video gets a **Duration missing** badge.
+  Click **✎ Edit details** to fix the title, date (`YYYY-MM-DD`) or duration (`18:42` or `1:02:03`), then **Save details**.
+- **Delete video** removes a video from the site only; nothing changes on YouTube.
+- **↻ Refresh hero list** re-downloads the hero list from OpenDota. Use it when Valve releases a new hero.
 
 ### 2. Review auto-suggested heroes
-When a *new* video is imported, hero names found in its title are pre-added as **Main** with an amber
-**needs review** flag. Lore names like *Yurnero*, *Magina* and *Rylai* count too.
+Each video you add is checked for hero names in its title, including lore names like *Yurnero*,
+*Magina* and *Rylai*. Any hero it finds is pre-added as **Main** with an amber **needs review** flag.
 
 - **✓ Confirm** keeps the hero and **✕** removes it. Press **Save** when you're done.
 - **Confirm all & save** confirms every suggestion for that video at once.
@@ -53,11 +57,9 @@ See [`.env.example`](./.env.example).
 | Variable | Purpose |
 | --- | --- |
 | `DATABASE_URL` | Neon Postgres connection string (set by the Vercel ↔ Neon integration) |
-| `YOUTUBE_API_KEY` | YouTube Data API v3 key |
-| `YOUTUBE_CHANNEL_ID` | Channel ID (`UC…`) |
 | `ADMIN_PASSWORD` | Password for `/admin` |
 | `SESSION_SECRET` | 32+ random characters; signs the admin cookie and salts vote hashes |
-| `CRON_SECRET` | Random string; Vercel Cron uses it to authenticate to `/api/cron/sync` |
+| `YOUTUBE_CHANNEL_ID` | Optional. Channel ID (`UC…`) for the header's YouTube button |
 
 ## Development
 
@@ -74,6 +76,7 @@ npm run dev
 
 ## How it works
 
-- **Public pages** (`/` and `/hero/[slug]`) use ISR and revalidate every hour. Admin saves, votes and syncs also revalidate them on demand.
+- **Public pages** (`/` and `/hero/[slug]`) use ISR and revalidate every hour. Admin changes and votes also revalidate them on demand.
+- **Video details** come from YouTube's public oEmbed endpoint and watch page (`src/lib/youtube.ts`), so no API key is needed.
 - **Hero data** comes from the OpenDota API (`/api/constants/heroes`). It's cached in the `heroes` table and uses the official Steam CDN images.
 - **Auth**: `src/middleware.ts` protects `/admin/*` and `/api/admin/*` with an HS256-signed JWT cookie.

@@ -31,3 +31,12 @@ export const ROLE_LABELS = {
 export function youtubeUrl(id: string): string {
   return `https://www.youtube.com/watch?v=${id}`;
 }
+
+/** "18:42" → 1122, "1:02:03" → 3723, "95" → 95. Returns null for invalid input. */
+export function parseDurationInput(input: string): number | null {
+  const parts = input.trim().split(":");
+  if (parts.length === 0 || parts.length > 3 || parts.some((p) => !/^\d+$/.test(p))) return null;
+  const nums = parts.map(Number);
+  if (nums.slice(1).some((n) => n >= 60)) return null;
+  return nums.reduce((total, n) => total * 60 + n, 0);
+}

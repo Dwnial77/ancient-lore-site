@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { detectHeroes } from "@/lib/detect-heroes";
-import { formatDuration } from "@/lib/format";
+import { formatDuration, parseDurationInput } from "@/lib/format";
 import { mapOpenDotaHeroes, slugify } from "@/lib/opendota";
 import { voterHash, voteDay, clientIp } from "@/lib/voter";
-import { looksLikeShort, parseIsoDuration } from "@/lib/youtube";
+import { parseIsoDuration, parseWatchPage, parseYouTubeId } from "@/lib/youtube";
 import { OPENDOTA_SAMPLE } from "./fixtures-heroes";
 
 const heroes = mapOpenDotaHeroes(OPENDOTA_SAMPLE);
@@ -45,19 +45,52 @@ describe("detectHeroes", () => {
 });
 
 describe("youtube helpers", () => {
-  it("parses ISO-8601 durations", () => {
-    expect(parseIsoDuration("PT18M42S")).toBe(1122);
-    expect(parseIsoDuration("PT1H2M3S")).toBe(3723);
-    expect(parseIsoDuration("PT59S")).toBe(59);
-    expect(parseIsoDuration("P0D")).toBe(0);
-    expect(parseIsoDuration("garbage")).toBe(0);
-    expect(formatDuration(1122)).toBe("18:42");
-    expect(formatDuration(3723)).toBe("1:02:03");
+  it("extracts video ids from every link format", () => {
+    const id = "dQw4w9WgXcQ";
+    for (const url of [
+      id,
+      `https://www.youtube.com/watch?v=${id}`,
+      `https://youtube.com/watch?v=${id}&t=42s&list=PL123`,
+      `https://m.youtube.com/watch?v=${id}`,
+      `https://youtu.be/${id}?si=abc`,
+      `youtu.be/${id}`,
+      `https://www.youtube.com/shorts/${id}`,
+      `https://www.youtube.com/embed/${id}`,
+      `https://www.youtube.com/live/${id}?feature=share`,
+    ]) {
+      expect(parseYouTubeId(url)).toBe(id);
+    }
+    expect(parseYouTubeId("https://www.youtube.com/@AncientLore")).toBeNull();
+    expect(parseYouTubeId("https://example.com/watch?v=dQw4w9WgXcQ")).toBeNull();
+    expect(parseYouTubeId("hello")).toBeNull();
   });
 
-  it("detects #shorts", () => {
-    expect(looksLikeShort("Pudge in 30s #Shorts", "")).toBe(true);
-    expect(looksLikeShort("Pudge Lore", "full story")).toBe(false);
+  it("parses duration, date and title from a watch page", () => {
+    const html = `<meta name="title" content="Juggernaut &amp; the Mask | Dota 2 Lore">
+      <script>var ytInitialPlayerResponse = {"videoDetails":{"lengthSeconds":"1122"},
+      "microformat":{"playerMicroformatRenderer":{"publishDate":"2026-03-03T05:00:12-08:00"}}};</script>`;
+    const info = parseWatchPage(html);
+    expect(info.durationSeconds).toBe(1122);
+    expect(info.publishedAt?.toISOString()).toBe("2026-03-03T13:00:12.000Z");
+    expect(info.title).toBe("Juggernaut & the Mask | Dota 2 Lore");
+
+    const meta = parseWatchPage(
+      `<meta itemprop="duration" content="PT20M5S"><meta itemprop="datePublished" content="2026-04-01">`,
+    );
+    expect(meta.durationSeconds).toBe(1205);
+    expect(meta.publishedAt?.toISOString().slice(0, 10)).toBe("2026-04-01");
+    expect(parseWatchPage("<html></html>")).toEqual({ durationSeconds: null, publishedAt: null, title: null });
+  });
+
+  it("parses and formats durations", () => {
+    expect(parseIsoDuration("PT1H2M3S")).toBe(3723);
+    expect(formatDuration(1122)).toBe("18:42");
+    expect(formatDuration(3723)).toBe("1:02:03");
+    expect(parseDurationInput("18:42")).toBe(1122);
+    expect(parseDurationInput("1:02:03")).toBe(3723);
+    expect(parseDurationInput("95")).toBe(95);
+    expect(parseDurationInput("1:75")).toBeNull();
+    expect(parseDurationInput("abc")).toBeNull();
   });
 });
 

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { getDb, schema } from "@/db";
 import { roleEnum, type Role } from "@/db/schema";
 import { revalidateHeroes } from "@/lib/revalidate";
-import { heroSlugsForIds } from "@/lib/sync";
+import { heroSlugsForIds } from "@/lib/heroes";
 
 type Item = { heroId: number; role: Role; note: string | null; needsReview: boolean };
 
