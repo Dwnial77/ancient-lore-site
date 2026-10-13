@@ -1,9 +1,9 @@
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { getDb, hasDatabase, schema } from "@/db";
-import type { Attribute, Role } from "@/db/schema";
+import type { Attribute, Role, TopicKind } from "@/db/schema";
 import { ensureHeroes } from "./heroes";
 
-const { heroes, videos, appearances, votes } = schema;
+const { heroes, videos, appearances, votes, topics, videoTopics } = schema;
 
 export type HeroSummary = {
   id: number;
@@ -75,15 +75,18 @@ export async function getHomeData(): Promise<HomeData> {
   return { heroes: sorted, topVotes, videoCount };
 }
 
-export type HeroVideo = {
+/** Fields a public video card needs. */
+export type EpisodeVideo = {
   youtubeId: string;
   title: string;
   thumbnailUrl: string;
   publishedAt: Date;
   durationSeconds: number;
-  role: Role;
-  note: string | null;
+  role?: Role;
+  note?: string | null;
 };
+
+export type HeroVideo = EpisodeVideo & { role: Role; note: string | null };
 
 export async function getHeroPage(slug: string) {
   if (!hasDatabase()) return null;
@@ -118,6 +121,117 @@ export async function getHeroPage(slug: string) {
   };
 }
 
+// ---------- Topics ("Beyond the Heroes") ----------
+
+const topicConfirmed = eq(videoTopics.needsReview, false);
+
+export type TopicSummary = {
+  id: number;
+  slug: string;
+  name: string;
+  kind: TopicKind;
+  description: string | null;
+  coverUrl: string | null;
+  episodes: number;
+};
+
+/** Custom cover, else the newest confirmed episode's thumbnail. */
+const coverSql = sql<string | null>`coalesce(${topics.imageUrl}, (
+  select ${videos.thumbnailUrl} from ${videoTopics}
+  join ${videos} on ${videos.youtubeId} = ${videoTopics.videoId}
+  where ${videoTopics.topicId} = ${topics.id} and ${videoTopics.needsReview} = false
+  order by ${videos.publishedAt} desc limit 1))`;
+
+const episodeCountSql = sql<number>`(select count(*)::int from ${videoTopics}
+  where ${videoTopics.topicId} = ${topics.id} and ${videoTopics.needsReview} = false)`;
+
+export async function getTopicsSummary(): Promise<TopicSummary[]> {
+  if (!hasDatabase()) return [];
+  return getDb()
+    .select({
+      id: topics.id,
+      slug: topics.slug,
+      name: topics.name,
+      kind: topics.kind,
+      description: topics.description,
+      coverUrl: coverSql,
+      episodes: episodeCountSql,
+    })
+    .from(topics)
+    .orderBy(asc(topics.sortOrder), asc(topics.name));
+}
+
+export async function getTopicPage(slug: string) {
+  if (!hasDatabase()) return null;
+  const db = getDb();
+  const [topic] = await db
+    .select({
+      id: topics.id,
+      slug: topics.slug,
+      name: topics.name,
+      kind: topics.kind,
+      description: topics.description,
+      coverUrl: coverSql,
+      episodes: episodeCountSql,
+    })
+    .from(topics)
+    .where(eq(topics.slug, slug))
+    .limit(1);
+  if (!topic) return null;
+
+  const list: EpisodeVideo[] = await db
+    .select({
+      youtubeId: videos.youtubeId,
+      title: videos.title,
+      thumbnailUrl: videos.thumbnailUrl,
+      publishedAt: videos.publishedAt,
+      durationSeconds: videos.durationSeconds,
+    })
+    .from(videoTopics)
+    .innerJoin(videos, eq(videos.youtubeId, videoTopics.videoId))
+    .where(and(eq(videoTopics.topicId, topic.id), topicConfirmed))
+    .orderBy(desc(videos.publishedAt));
+
+  return { topic, videos: list };
+}
+
+export type LatestEpisode = EpisodeVideo & {
+  heroes: { slug: string; name: string; iconUrl: string }[];
+  topics: { slug: string; name: string }[];
+};
+
+export async function getLatestEpisode(): Promise<LatestEpisode | null> {
+  if (!hasDatabase()) return null;
+  const db = getDb();
+  const [video] = await db
+    .select({
+      youtubeId: videos.youtubeId,
+      title: videos.title,
+      thumbnailUrl: videos.thumbnailUrl,
+      publishedAt: videos.publishedAt,
+      durationSeconds: videos.durationSeconds,
+    })
+    .from(videos)
+    .orderBy(desc(videos.publishedAt))
+    .limit(1);
+  if (!video) return null;
+
+  const [heroRows, topicRows] = await Promise.all([
+    db
+      .select({ slug: heroes.slug, name: heroes.name, iconUrl: heroes.iconUrl })
+      .from(appearances)
+      .innerJoin(heroes, eq(heroes.id, appearances.heroId))
+      .where(and(eq(appearances.videoId, video.youtubeId), confirmed))
+      .orderBy(asc(appearances.role), asc(heroes.name)),
+    db
+      .select({ slug: topics.slug, name: topics.name })
+      .from(videoTopics)
+      .innerJoin(topics, eq(topics.id, videoTopics.topicId))
+      .where(and(eq(videoTopics.videoId, video.youtubeId), topicConfirmed)),
+  ]);
+  return { ...video, heroes: heroRows, topics: topicRows };
+}
+
 // ---------- Admin ----------
 
 export type AdminAppearance = {
@@ -127,6 +241,8 @@ export type AdminAppearance = {
   needsReview: boolean;
 };
 
+export type AdminTopicLink = { topicId: number; needsReview: boolean };
+
 export type AdminVideo = {
   youtubeId: string;
   title: string;
@@ -134,6 +250,17 @@ export type AdminVideo = {
   publishedAt: string;
   durationSeconds: number;
   appearances: AdminAppearance[];
+  topics: AdminTopicLink[];
+};
+
+export type AdminTopic = {
+  id: number;
+  slug: string;
+  name: string;
+  kind: TopicKind;
+  description: string | null;
+  imageUrl: string | null;
+  sortOrder: number;
 };
 
 export type PickerHero = { id: number; slug: string; name: string; attribute: Attribute; iconUrl: string };
@@ -141,7 +268,7 @@ export type PickerHero = { id: number; slug: string; name: string; attribute: At
 export async function getAdminData() {
   await ensureHeroes();
   const db = getDb();
-  const [videoRows, appearanceRows, heroRows] = await Promise.all([
+  const [videoRows, appearanceRows, heroRows, topicRows, topicLinkRows] = await Promise.all([
     db.select().from(videos).orderBy(desc(videos.publishedAt)),
     db.select().from(appearances).orderBy(asc(appearances.createdAt)),
     db
@@ -154,7 +281,16 @@ export async function getAdminData() {
       })
       .from(heroes)
       .orderBy(asc(heroes.name)),
+    getAdminTopics(),
+    db.select().from(videoTopics).orderBy(asc(videoTopics.createdAt)),
   ]);
+
+  const topicsByVideo = new Map<string, AdminTopicLink[]>();
+  for (const t of topicLinkRows) {
+    const list = topicsByVideo.get(t.videoId) ?? [];
+    list.push({ topicId: t.topicId, needsReview: t.needsReview });
+    topicsByVideo.set(t.videoId, list);
+  }
 
   const byVideo = new Map<string, AdminAppearance[]>();
   for (const a of appearanceRows) {
@@ -170,12 +306,29 @@ export async function getAdminData() {
     publishedAt: v.publishedAt.toISOString(),
     durationSeconds: v.durationSeconds,
     appearances: byVideo.get(v.youtubeId) ?? [],
+    topics: topicsByVideo.get(v.youtubeId) ?? [],
   }));
 
   return {
     videos: adminVideos,
     heroes: heroRows as PickerHero[],
+    topics: topicRows,
   };
+}
+
+export async function getAdminTopics(): Promise<AdminTopic[]> {
+  return getDb()
+    .select({
+      id: topics.id,
+      slug: topics.slug,
+      name: topics.name,
+      kind: topics.kind,
+      description: topics.description,
+      imageUrl: topics.imageUrl,
+      sortOrder: topics.sortOrder,
+    })
+    .from(topics)
+    .orderBy(asc(topics.sortOrder), asc(topics.name));
 }
 
 export async function getVoteResults() {

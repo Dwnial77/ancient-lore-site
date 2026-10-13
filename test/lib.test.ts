@@ -39,6 +39,17 @@ describe("detectHeroes", () => {
     expect(detectHeroes("TERRORBLADE — Demon Marauder", heroes)).toEqual([id("terrorblade")]);
   });
 
+  it("detects topics with the same matcher", () => {
+    const topics = [
+      { id: 1, slug: "what-if", name: "What If" },
+      { id: 2, slug: "roshan", name: "Roshan" },
+      { id: 3, slug: "the-shopkeeper", name: "The Shopkeeper" },
+    ];
+    expect(detectHeroes("What If Roshan Never Died? | Dota 2 Lore", topics)).toEqual([1, 2]);
+    expect(detectHeroes("WHAT IF... the Shopkeeper was a god", topics).sort()).toEqual([1, 3]);
+    expect(detectHeroes("Juggernaut: The Last Blade", topics)).toEqual([]);
+  });
+
   it("prefers the longest match", () => {
     expect(detectHeroes("Shadow Shaman rituals", heroes)).toEqual([id("shadow-shaman")]);
   });

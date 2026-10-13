@@ -4,14 +4,24 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import type { Role } from "@/db/schema";
 import { formatDate, formatDuration, parseDurationInput, ROLE_LABELS, youtubeUrl } from "@/lib/format";
-import type { AdminAppearance, AdminVideo, PickerHero } from "@/lib/queries";
-import { HeroPicker } from "./HeroPicker";
+import type { AdminAppearance, AdminTopic, AdminTopicLink, AdminVideo, PickerHero } from "@/lib/queries";
+import { AttributeDot } from "../AttributeDot";
+import { SearchPicker } from "./SearchPicker";
 
 const ROLES: Role[] = ["main", "supporting", "cameo"];
 
-export function VideoEditor({ video, heroes }: { video: AdminVideo; heroes: Map<number, PickerHero> }) {
+export function VideoEditor({
+  video,
+  heroes,
+  topics,
+}: {
+  video: AdminVideo;
+  heroes: Map<number, PickerHero>;
+  topics: Map<number, AdminTopic>;
+}) {
   const router = useRouter();
   const [items, setItems] = useState<AdminAppearance[]>(video.appearances);
+  const [topicLinks, setTopicLinks] = useState<AdminTopicLink[]>(video.topics);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
   const [editing, setEditing] = useState(video.durationSeconds === 0);
@@ -21,21 +31,32 @@ export function VideoEditor({ video, heroes }: { video: AdminVideo; heroes: Map<
     duration: video.durationSeconds ? formatDuration(video.durationSeconds) : "",
   });
 
-  const dirty = useMemo(() => JSON.stringify(items) !== JSON.stringify(video.appearances), [items, video.appearances]);
+  const dirty = useMemo(
+    () =>
+      JSON.stringify(items) !== JSON.stringify(video.appearances) ||
+      JSON.stringify(topicLinks) !== JSON.stringify(video.topics),
+    [items, topicLinks, video.appearances, video.topics],
+  );
   const exclude = useMemo(() => new Set(items.map((i) => i.heroId)), [items]);
-  const heroList = useMemo(() => [...heroes.values()], [heroes]);
+  const excludeTopics = useMemo(() => new Set(topicLinks.map((t) => t.topicId)), [topicLinks]);
+  const heroOptions = useMemo(
+    () => [...heroes.values()].map((h) => ({ ...h, trailing: <AttributeDot attribute={h.attribute} /> })),
+    [heroes],
+  );
+  const topicOptions = useMemo(() => [...topics.values()], [topics]);
+  const unassigned = items.length === 0 && topicLinks.length === 0;
 
   const update = (heroId: number, patch: Partial<AdminAppearance>) =>
     setItems((list) => list.map((i) => (i.heroId === heroId ? { ...i, ...patch } : i)));
   const remove = (heroId: number) => setItems((list) => list.filter((i) => i.heroId !== heroId));
 
-  async function save(next = items) {
+  async function save(next = items, nextTopics = topicLinks) {
     setSaving(true);
     setStatus(null);
     const res = await fetch("/api/admin/appearances", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ videoId: video.youtubeId, items: next }),
+      body: JSON.stringify({ videoId: video.youtubeId, items: next, topics: nextTopics }),
     });
     setSaving(false);
     if (res.ok) {
@@ -79,11 +100,11 @@ export function VideoEditor({ video, heroes }: { video: AdminVideo; heroes: Map<
     else setStatus({ ok: false, text: "Delete failed" });
   }
 
-  const reviewCount = items.filter((i) => i.needsReview).length;
+  const reviewCount = items.filter((i) => i.needsReview).length + topicLinks.filter((t) => t.needsReview).length;
 
   return (
     <article
-      className={`rounded-xl border bg-surface p-4 transition ${dirty ? "border-amber/70" : items.length === 0 ? "border-str/50" : "border-line"}`}
+      className={`rounded-xl border bg-surface p-4 transition ${dirty ? "border-amber/70" : unassigned ? "border-str/50" : "border-line"}`}
     >
       <div className="flex gap-4">
         <a href={youtubeUrl(video.youtubeId)} target="_blank" rel="noopener noreferrer" className="shrink-0">
@@ -102,8 +123,8 @@ export function VideoEditor({ video, heroes }: { video: AdminVideo; heroes: Map<
             </button>
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
-            {items.length === 0 ? (
-              <span className="rounded-full bg-str/15 px-2 py-0.5 text-xs text-str">No heroes assigned</span>
+            {unassigned ? (
+              <span className="rounded-full bg-str/15 px-2 py-0.5 text-xs text-str">Unassigned</span>
             ) : null}
             {reviewCount ? (
               <span className="rounded-full bg-amber/15 px-2 py-0.5 text-xs text-amber">{reviewCount} need review</span>
@@ -216,19 +237,73 @@ export function VideoEditor({ video, heroes }: { video: AdminVideo; heroes: Map<
         </ul>
       ) : null}
 
+      {topicLinks.length > 0 ? (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span className="text-xs uppercase tracking-wider text-muted">Topics</span>
+          {topicLinks.map((link) => {
+            const topic = topics.get(link.topicId);
+            return (
+              <span
+                key={link.topicId}
+                className={`flex items-center gap-1 rounded-full border py-0.5 pl-3 pr-1 text-sm ${link.needsReview ? "border-amber/60 bg-amber/10 text-amber" : "border-line bg-ink/40 text-parchment"}`}
+              >
+                {topic?.name ?? `Topic #${link.topicId}`}
+                {link.needsReview ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setTopicLinks((list) => list.map((t) => (t.topicId === link.topicId ? { ...t, needsReview: false } : t)))
+                    }
+                    className="rounded-full px-1.5 text-xs font-semibold text-agi hover:bg-agi/20"
+                    title="Auto-detected from the title — confirm it"
+                  >
+                    ✓
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => setTopicLinks((list) => list.filter((t) => t.topicId !== link.topicId))}
+                  className="rounded-full px-1.5 text-xs text-muted hover:bg-str/15 hover:text-str"
+                  aria-label={`Remove ${topic?.name ?? "topic"}`}
+                >
+                  ✕
+                </button>
+              </span>
+            );
+          })}
+        </div>
+      ) : null}
+
       <div className="mt-3 flex flex-wrap items-center gap-3">
-        <HeroPicker
-          heroes={heroList}
+        <SearchPicker
+          items={heroOptions}
           exclude={exclude}
+          label="+ Add hero"
+          placeholder="Search hero…"
+          emptyText="No heroes found"
           onPick={(h) => setItems((list) => [...list, { heroId: h.id, role: "main", note: null, needsReview: false }])}
+        />
+        <SearchPicker
+          items={topicOptions}
+          exclude={excludeTopics}
+          label="+ Add topic"
+          placeholder="Search topic…"
+          emptyText={
+            <a href="/admin/topics" className="text-amber hover:underline">
+              Create topics first →
+            </a>
+          }
+          onPick={(t) => setTopicLinks((list) => [...list, { topicId: t.id, needsReview: false }])}
         />
         {reviewCount > 0 ? (
           <button
             type="button"
             onClick={() => {
               const next = items.map((i) => ({ ...i, needsReview: false }));
+              const nextTopics = topicLinks.map((t) => ({ ...t, needsReview: false }));
               setItems(next);
-              void save(next);
+              setTopicLinks(nextTopics);
+              void save(next, nextTopics);
             }}
             className="text-sm text-agi hover:underline"
           >
@@ -238,7 +313,14 @@ export function VideoEditor({ video, heroes }: { video: AdminVideo; heroes: Map<
         <div className="ml-auto flex items-center gap-3">
           {status ? <span className={`text-xs ${status.ok ? "text-agi" : "text-str"}`}>{status.text}</span> : null}
           {dirty ? (
-            <button type="button" onClick={() => setItems(video.appearances)} className="text-sm text-muted hover:text-parchment">
+            <button
+              type="button"
+              onClick={() => {
+                setItems(video.appearances);
+                setTopicLinks(video.topics);
+              }}
+              className="text-sm text-muted hover:text-parchment"
+            >
               Reset
             </button>
           ) : null}

@@ -43,7 +43,21 @@ For each video:
 The **Needs attention** box and the **No heroes** / **Needs review** tabs list the videos you still need to
 handle, so nothing slips through.
 
-### 4. Votes
+### 4. Topics: "Beyond the Heroes"
+Topics are for videos that aren't about a single hero:
+- **Series**: a recurring format, e.g. *What If…*
+- **World lore**: a character, creature or place, e.g. *Roshan*, *the Shopkeeper*
+
+Create them under **Topics** in the admin bar (name, type, optional short description, optional cover image link,
+and the order on the home page). Then tag videos with **+ Add topic** on the Videos page, the same way you add heroes.
+A video can have heroes *and* topics, e.g. "What If Juggernaut…" appears both in the *What If* series and on
+Juggernaut's page.
+
+Each topic gets a card in **Beyond the Heroes** on the home page and its own page at `/lore/<topic>`.
+With no cover image set, the newest episode's thumbnail is used. When you add a video, topic names in its title are
+suggested automatically (needs review), just like heroes.
+
+### 5. Votes
 **Votes** in the admin bar lists every hero that has votes, with the total, last-7-days and today's counts.
 Visitors can vote once per hero per day. Only a salted hash of their IP is stored, never the IP itself.
 Voting for a hero closes automatically once they have a confirmed appearance.
@@ -76,7 +90,11 @@ npm run dev
 
 ## How it works
 
-- **Public pages** (`/` and `/hero/[slug]`) use ISR and revalidate every hour. Admin changes and votes also revalidate them on demand.
+- **Videos play inside the site** in a cinematic player (YouTube's privacy-enhanced embed, so views still count). Ctrl/Cmd-click opens YouTube instead.
+- **Latest episode** is featured at the top of the home page automatically.
+- **Share images**: each page has a generated preview image for Discord, Reddit, Telegram etc. (`opengraph-image.tsx` files).
+- **Analytics**: Vercel Web Analytics (`<Analytics />` in the root layout); see the project's Analytics tab.
+- **Public pages** (`/`, `/hero/[slug]`, `/lore/[slug]`) use ISR and revalidate every hour. Admin changes and votes also revalidate them on demand.
 - **Video details** come from YouTube's public oEmbed endpoint and watch page (`src/lib/youtube.ts`), so no API key is needed.
 - **Hero data** comes from the OpenDota API (`/api/constants/heroes`). It's cached in the `heroes` table and uses the official Steam CDN images.
 - **Auth**: `src/middleware.ts` protects `/admin/*` and `/api/admin/*` with an HS256-signed JWT cookie.

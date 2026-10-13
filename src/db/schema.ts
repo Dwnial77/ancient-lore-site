@@ -14,9 +14,11 @@ import {
 
 export const attributeEnum = pgEnum("hero_attribute", ["str", "agi", "int", "all"]);
 export const roleEnum = pgEnum("appearance_role", ["main", "supporting", "cameo"]);
+export const topicKindEnum = pgEnum("topic_kind", ["series", "character"]);
 
 export type Attribute = (typeof attributeEnum.enumValues)[number];
 export type Role = (typeof roleEnum.enumValues)[number];
+export type TopicKind = (typeof topicKindEnum.enumValues)[number];
 
 export const heroes = pgTable("heroes", {
   // OpenDota hero id
@@ -78,6 +80,34 @@ export const votes = pgTable(
   ],
 );
 
+/** Non-hero subjects: a series ("What If…") or a character/place (Roshan, the Shopkeeper…). */
+export const topics = pgTable("topics", {
+  id: serial("id").primaryKey(),
+  slug: text("slug").notNull().unique(),
+  name: text("name").notNull(),
+  kind: topicKindEnum("kind").notNull().default("series"),
+  description: text("description"),
+  imageUrl: text("image_url"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const videoTopics = pgTable(
+  "video_topics",
+  {
+    videoId: text("video_id")
+      .notNull()
+      .references(() => videos.youtubeId, { onDelete: "cascade" }),
+    topicId: integer("topic_id")
+      .notNull()
+      .references(() => topics.id, { onDelete: "cascade" }),
+    needsReview: boolean("needs_review").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.videoId, t.topicId] }), index("video_topics_topic_idx").on(t.topicId)],
+);
+
 export type Hero = typeof heroes.$inferSelect;
 export type Video = typeof videos.$inferSelect;
 export type Appearance = typeof appearances.$inferSelect;
+export type Topic = typeof topics.$inferSelect;

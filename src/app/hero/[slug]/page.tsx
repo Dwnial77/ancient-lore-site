@@ -24,7 +24,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: `${data.hero.name} Lore`,
     description: `Ancient Lore episodes featuring ${data.hero.name}, the ${ATTRIBUTE_LABELS[data.hero.attribute]} hero of Dota 2.`,
-    openGraph: { images: [data.hero.imageUrl] },
   };
 }
 

@@ -1,11 +1,18 @@
+import { Analytics } from "@vercel/analytics/next";
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
+import { VideoPlayerProvider } from "@/components/VideoPlayer";
 import "@fontsource/cinzel/600.css";
 import "@fontsource/cinzel/700.css";
 import "@fontsource-variable/inter";
 import "./globals.css";
 
+const siteUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
+  ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+  : "https://ancient-lore.vercel.app";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: { default: "Ancient Lore — The Archive of Dota 2 Heroes", template: "%s · Ancient Lore" },
   description: "Cinematic Dota 2 hero lore. Find every Ancient Lore episode by hero and vote for the next one.",
 };
@@ -21,6 +28,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en">
       <body className="min-h-dvh flex flex-col">
+        <VideoPlayerProvider>
         <header className="sticky top-0 z-40 border-b border-line/60 bg-ink/75 backdrop-blur-md">
           <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
             <Link href="/" className="group flex items-center gap-2">
@@ -46,6 +54,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             © {new Date().getFullYear()} Ancient Lore · Hero data from OpenDota · Not affiliated with Valve.
           </p>
         </footer>
+        </VideoPlayerProvider>
+        <Analytics />
       </body>
     </html>
   );

@@ -1,16 +1,22 @@
 import { HeroGrid } from "@/components/HeroGrid";
+import { LatestEpisode } from "@/components/LatestEpisode";
+import { BeyondTheHeroes } from "@/components/TopicCard";
 import { TopVotes } from "@/components/TopVotes";
-import { getHomeData } from "@/lib/queries";
+import { getHomeData, getLatestEpisode, getTopicsSummary } from "@/lib/queries";
 
 export const revalidate = 3600;
 
 export default async function HomePage() {
-  const { heroes, topVotes, videoCount } = await getHomeData();
+  const [{ heroes, topVotes, videoCount }, latest, topics] = await Promise.all([
+    getHomeData(),
+    getLatestEpisode(),
+    getTopicsSummary(),
+  ]);
   const covered = heroes.filter((h) => h.episodes > 0).length;
 
   return (
     <div className="mx-auto max-w-7xl px-4">
-      <section className="pb-10 pt-14 text-center sm:pt-20">
+      <section className="pb-10 pt-12 text-center sm:pt-16">
         <p className="text-xs uppercase tracking-[0.4em] text-muted">Cinematic Dota 2 lore</p>
         <h1 className="mt-4 font-display text-4xl font-bold leading-tight text-gradient-amber sm:text-6xl">
           The Archive of Heroes
@@ -25,6 +31,12 @@ export default async function HomePage() {
           {videoCount} episodes
         </p>
       </section>
+
+      {latest ? <LatestEpisode video={latest} /> : null}
+
+      <BeyondTheHeroes topics={topics} />
+
+      <h2 className="mb-4 font-display text-xl font-semibold tracking-[0.2em] text-amber">THE HEROES</h2>
 
       <div className="md:hidden">
         <TopVotes items={topVotes} variant="scroller" />

@@ -1,6 +1,9 @@
+"use client";
+
 import type { Role } from "@/db/schema";
-import { formatDate, formatDuration, ROLE_LABELS, youtubeUrl } from "@/lib/format";
-import type { HeroVideo } from "@/lib/queries";
+import { formatDate, formatDuration, ROLE_LABELS } from "@/lib/format";
+import type { EpisodeVideo } from "@/lib/queries";
+import { PlayLink } from "./VideoPlayer";
 
 const ROLE_STYLES: Record<Role, string> = {
   main: "border-amber bg-amber text-ink",
@@ -16,12 +19,10 @@ export function RoleBadge({ role }: { role: Role }) {
   );
 }
 
-export function VideoCard({ video, showRole = false }: { video: HeroVideo; showRole?: boolean }) {
+export function VideoCard({ video, showRole = false }: { video: EpisodeVideo; showRole?: boolean }) {
   return (
-    <a
-      href={youtubeUrl(video.youtubeId)}
-      target="_blank"
-      rel="noopener noreferrer"
+    <PlayLink
+      video={video}
       className="group block overflow-hidden rounded-xl border border-line bg-surface transition-all duration-300 hover:-translate-y-1 hover:border-amber/70 hover:shadow-[0_10px_40px_-10px] hover:shadow-amber/40"
     >
       <div className="relative aspect-video overflow-hidden">
@@ -46,13 +47,13 @@ export function VideoCard({ video, showRole = false }: { video: HeroVideo; showR
         ) : null}
       </div>
       <div className="space-y-2 p-4">
-        {showRole ? <RoleBadge role={video.role} /> : null}
+        {showRole && video.role ? <RoleBadge role={video.role} /> : null}
         <h3 className="line-clamp-2 font-medium leading-snug text-parchment group-hover:text-amber-soft">{video.title}</h3>
         {video.note ? <p className="text-sm italic text-muted">“{video.note}”</p> : null}
         <p className="text-xs text-muted">
           <time dateTime={new Date(video.publishedAt).toISOString()}>{formatDate(video.publishedAt)}</time>
         </p>
       </div>
-    </a>
+    </PlayLink>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { AdminVideo, PickerHero } from "@/lib/queries";
+import type { AdminTopic, AdminVideo, PickerHero } from "@/lib/queries";
 import { AddVideoForm } from "./AddVideoForm";
 import { VideoEditor } from "./VideoEditor";
 
@@ -10,16 +10,21 @@ type Filter = "all" | "unassigned" | "review";
 export function AdminDashboard({
   videos,
   heroes,
+  topics,
 }: {
   videos: AdminVideo[];
   heroes: PickerHero[];
+  topics: AdminTopic[];
 }) {
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
 
   const heroMap = useMemo(() => new Map(heroes.map((h) => [h.id, h])), [heroes]);
-  const unassigned = videos.filter((v) => v.appearances.length === 0);
-  const needsReview = videos.filter((v) => v.appearances.some((a) => a.needsReview));
+  const topicMap = useMemo(() => new Map(topics.map((t) => [t.id, t])), [topics]);
+  const unassigned = videos.filter((v) => v.appearances.length === 0 && v.topics.length === 0);
+  const needsReview = videos.filter(
+    (v) => v.appearances.some((a) => a.needsReview) || v.topics.some((t) => t.needsReview),
+  );
 
   const shown = useMemo(() => {
     const base = filter === "unassigned" ? unassigned : filter === "review" ? needsReview : videos;
@@ -29,7 +34,7 @@ export function AdminDashboard({
 
   const tabs: { id: Filter; label: string; count: number }[] = [
     { id: "all", label: "All", count: videos.length },
-    { id: "unassigned", label: "No heroes", count: unassigned.length },
+    { id: "unassigned", label: "Unassigned", count: unassigned.length },
     { id: "review", label: "Needs review", count: needsReview.length },
   ];
 
@@ -38,7 +43,7 @@ export function AdminDashboard({
       <AddVideoForm />
 
       <p className="text-sm text-muted">
-        {videos.length} videos · {heroes.length} heroes
+        {videos.length} videos · {heroes.length} heroes · {topics.length} topics
       </p>
 
       {unassigned.length || needsReview.length ? (
@@ -48,14 +53,14 @@ export function AdminDashboard({
             {unassigned.length ? (
               <li>
                 <button type="button" onClick={() => setFilter("unassigned")} className="text-parchment hover:text-amber">
-                  {unassigned.length} {unassigned.length === 1 ? "video has" : "videos have"} no heroes assigned →
+                  {unassigned.length} {unassigned.length === 1 ? "video has" : "videos have"} no heroes or topics yet →
                 </button>
               </li>
             ) : null}
             {needsReview.length ? (
               <li>
                 <button type="button" onClick={() => setFilter("review")} className="text-parchment hover:text-amber">
-                  {needsReview.length} {needsReview.length === 1 ? "video has" : "videos have"} auto-suggested heroes to review →
+                  {needsReview.length} {needsReview.length === 1 ? "video has" : "videos have"} auto-suggested heroes or topics to review →
                 </button>
               </li>
             ) : null}
@@ -91,7 +96,12 @@ export function AdminDashboard({
       <div className="space-y-4">
         {shown.length === 0 ? <p className="py-10 text-center text-muted">Nothing here.</p> : null}
         {shown.map((v) => (
-          <VideoEditor key={`${v.youtubeId}:${JSON.stringify(v.appearances)}`} video={v} heroes={heroMap} />
+          <VideoEditor
+            key={`${v.youtubeId}:${JSON.stringify(v.appearances)}:${JSON.stringify(v.topics)}`}
+            video={v}
+            heroes={heroMap}
+            topics={topicMap}
+          />
         ))}
       </div>
     </div>

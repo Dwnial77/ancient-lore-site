@@ -1,28 +1,36 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { PickerHero } from "@/lib/queries";
-import { AttributeDot } from "../AttributeDot";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 
-export function HeroPicker({
-  heroes,
+export type PickerItem = { id: number; name: string; iconUrl?: string | null; trailing?: React.ReactNode };
+
+/** Searchable, keyboard-navigable popover for picking a hero or topic. */
+export function SearchPicker<T extends PickerItem>({
+  items,
   exclude,
   onPick,
+  label,
+  placeholder,
+  emptyText = "Nothing found",
 }: {
-  heroes: PickerHero[];
+  items: T[];
   exclude: Set<number>;
-  onPick: (hero: PickerHero) => void;
+  onPick: (item: T) => void;
+  label: string;
+  placeholder: string;
+  emptyText?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
   const rootRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
+  const listId = useId();
 
   const options = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return heroes.filter((h) => !exclude.has(h.id) && (!q || h.name.toLowerCase().includes(q)));
-  }, [heroes, exclude, query]);
+    return items.filter((h) => !exclude.has(h.id) && (!q || h.name.toLowerCase().includes(q)));
+  }, [items, exclude, query]);
 
   useEffect(() => setActive(0), [query]);
 
@@ -39,8 +47,8 @@ export function HeroPicker({
     listRef.current?.querySelector(`[data-index="${active}"]`)?.scrollIntoView({ block: "nearest" });
   }, [active]);
 
-  function pick(hero: PickerHero) {
-    onPick(hero);
+  function pick(item: T) {
+    onPick(item);
     setQuery("");
     setOpen(false);
   }
@@ -67,7 +75,7 @@ export function HeroPicker({
         onClick={() => setOpen((o) => !o)}
         className="rounded-full border border-dashed border-amber/60 px-3 py-1 text-sm text-amber transition hover:bg-amber/10"
       >
-        + Add hero
+        {label}
       </button>
       {open ? (
         <div className="absolute left-0 top-full z-50 mt-2 w-72 rounded-xl border border-line bg-surface-2 p-2 shadow-2xl">
@@ -76,14 +84,14 @@ export function HeroPicker({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={onKeyDown}
-            placeholder="Search hero…"
+            placeholder={placeholder}
             role="combobox"
             aria-expanded="true"
-            aria-controls="hero-picker-list"
+            aria-controls={listId}
             className="w-full rounded-lg border border-line bg-ink px-3 py-2 text-sm text-parchment focus:border-amber focus:outline-none"
           />
-          <ul ref={listRef} id="hero-picker-list" role="listbox" className="mt-2 max-h-64 overflow-y-auto">
-            {options.length === 0 ? <li className="px-3 py-2 text-sm text-muted">No heroes found</li> : null}
+          <ul ref={listRef} id={listId} role="listbox" className="mt-2 max-h-64 overflow-y-auto">
+            {options.length === 0 ? <li className="px-3 py-2 text-sm text-muted">{emptyText}</li> : null}
             {options.map((h, i) => (
               <li
                 key={h.id}
@@ -97,10 +105,12 @@ export function HeroPicker({
                 }}
                 className={`flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm ${i === active ? "bg-amber/15 text-amber" : "text-parchment"}`}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={h.iconUrl} alt="" className="h-6 w-6" loading="lazy" />
+                {h.iconUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={h.iconUrl} alt="" className="h-6 w-6" loading="lazy" />
+                ) : null}
                 <span className="flex-1 truncate">{h.name}</span>
-                <AttributeDot attribute={h.attribute} />
+                {h.trailing}
               </li>
             ))}
           </ul>
