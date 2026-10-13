@@ -28,6 +28,8 @@ export const ROLE_LABELS = {
   cameo: "Cameo",
 } as const;
 
+export const CHANNEL_URL = "https://www.youtube.com/@Ancientloree";
+
 export function youtubeUrl(id: string): string {
   return `https://www.youtube.com/watch?v=${id}`;
 }

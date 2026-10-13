@@ -1,9 +1,6 @@
-"use client";
-
 import type { Role } from "@/db/schema";
-import { formatDate, formatDuration, ROLE_LABELS } from "@/lib/format";
+import { formatDate, formatDuration, ROLE_LABELS, youtubeUrl } from "@/lib/format";
 import type { EpisodeVideo } from "@/lib/queries";
-import { PlayLink } from "./VideoPlayer";
 
 const ROLE_STYLES: Record<Role, string> = {
   main: "border-amber bg-amber text-ink",
@@ -21,8 +18,10 @@ export function RoleBadge({ role }: { role: Role }) {
 
 export function VideoCard({ video, showRole = false }: { video: EpisodeVideo; showRole?: boolean }) {
   return (
-    <PlayLink
-      video={video}
+    <a
+      href={youtubeUrl(video.youtubeId)}
+      target="_blank"
+      rel="noopener noreferrer"
       className="group block overflow-hidden rounded-xl border border-line bg-surface transition-all duration-300 hover:-translate-y-1 hover:border-amber/70 hover:shadow-[0_10px_40px_-10px] hover:shadow-amber/40"
     >
       <div className="relative aspect-video overflow-hidden">
@@ -54,6 +53,6 @@ export function VideoCard({ video, showRole = false }: { video: EpisodeVideo; sh
           <time dateTime={new Date(video.publishedAt).toISOString()}>{formatDate(video.publishedAt)}</time>
         </p>
       </div>
-    </PlayLink>
+    </a>
   );
 }

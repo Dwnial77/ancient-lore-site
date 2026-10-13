@@ -1,13 +1,18 @@
 import Link from "next/link";
-import { formatDate, formatDuration } from "@/lib/format";
+import { formatDate, formatDuration, youtubeUrl } from "@/lib/format";
 import type { LatestEpisode as Latest } from "@/lib/queries";
-import { PlayLink } from "./VideoPlayer";
 
 export function LatestEpisode({ video }: { video: Latest }) {
   return (
     <section aria-labelledby="latest-episode" className="mb-12">
       <div className="grid overflow-hidden rounded-2xl border border-amber/30 bg-surface/80 shadow-[0_0_80px_-30px] shadow-amber/50 md:grid-cols-[minmax(0,1.5fr)_1fr]">
-        <PlayLink video={video} ariaLabel={`Play ${video.title}`} className="group relative block aspect-video overflow-hidden">
+        <a
+          href={youtubeUrl(video.youtubeId)}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`Watch ${video.title} on YouTube`}
+          className="group relative block aspect-video overflow-hidden"
+        >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={video.thumbnailUrl}
@@ -27,7 +32,7 @@ export function LatestEpisode({ video }: { video: Latest }) {
               {formatDuration(video.durationSeconds)}
             </span>
           ) : null}
-        </PlayLink>
+        </a>
 
         <div className="flex flex-col justify-center gap-4 p-5 sm:p-8">
           <p id="latest-episode" className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.3em] text-amber">
@@ -65,15 +70,17 @@ export function LatestEpisode({ video }: { video: Latest }) {
             </div>
           ) : null}
 
-          <PlayLink
-            video={video}
+          <a
+            href={youtubeUrl(video.youtubeId)}
+            target="_blank"
+            rel="noopener noreferrer"
             className="inline-flex w-fit items-center gap-2 rounded-full bg-amber px-6 py-2.5 font-semibold text-ink transition hover:bg-amber-soft hover:shadow-[0_0_24px] hover:shadow-amber/50"
           >
             <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden="true">
               <path d="M8 5v14l11-7z" />
             </svg>
-            Watch now
-          </PlayLink>
+            Watch on YouTube ↗
+          </a>
         </div>
       </div>
     </section>

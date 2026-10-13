@@ -73,7 +73,6 @@ See [`.env.example`](./.env.example).
 | `DATABASE_URL` | Neon Postgres connection string (set by the Vercel ↔ Neon integration) |
 | `ADMIN_PASSWORD` | Password for `/admin` |
 | `SESSION_SECRET` | 32+ random characters; signs the admin cookie and salts vote hashes |
-| `YOUTUBE_CHANNEL_ID` | Optional. Channel ID (`UC…`) for the header's YouTube button |
 
 ## Development
 
@@ -90,7 +89,7 @@ npm run dev
 
 ## How it works
 
-- **Videos play inside the site** in a cinematic player (YouTube's privacy-enhanced embed, so views still count). Ctrl/Cmd-click opens YouTube instead.
+- **Video cards open the video on YouTube** in a new tab; the header button links to the channel (`CHANNEL_URL` in `src/lib/format.ts`).
 - **Latest episode** is featured at the top of the home page automatically.
 - **Share images**: each page has a generated preview image for Discord, Reddit, Telegram etc. (`opengraph-image.tsx` files).
 - **Analytics**: Vercel Web Analytics (`<Analytics />` in the root layout); see the project's Analytics tab.

@@ -1,7 +1,7 @@
 import { Analytics } from "@vercel/analytics/next";
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
-import { VideoPlayerProvider } from "@/components/VideoPlayer";
+import { CHANNEL_URL } from "@/lib/format";
 import "@fontsource/cinzel/600.css";
 import "@fontsource/cinzel/700.css";
 import "@fontsource-variable/inter";
@@ -19,16 +19,10 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = { themeColor: "#100D08" };
 
-function channelUrl() {
-  const id = process.env.YOUTUBE_CHANNEL_ID;
-  return id ? `https://www.youtube.com/channel/${id}` : "https://www.youtube.com/";
-}
-
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
       <body className="min-h-dvh flex flex-col">
-        <VideoPlayerProvider>
         <header className="sticky top-0 z-40 border-b border-line/60 bg-ink/75 backdrop-blur-md">
           <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
             <Link href="/" className="group flex items-center gap-2">
@@ -36,9 +30,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               <span className="font-display text-lg font-bold tracking-[0.2em] text-parchment">ANCIENT LORE</span>
             </Link>
             <a
-              href={channelUrl()}
+              href={CHANNEL_URL}
               target="_blank"
               rel="noopener noreferrer"
+              aria-label="Ancient Lore on YouTube"
               className="flex items-center gap-2 rounded-full border border-amber/40 px-3 py-1.5 text-sm text-amber transition hover:bg-amber hover:text-ink"
             >
               <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden="true">
@@ -54,7 +49,6 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             © {new Date().getFullYear()} Ancient Lore · Hero data from OpenDota · Not affiliated with Valve.
           </p>
         </footer>
-        </VideoPlayerProvider>
         <Analytics />
       </body>
     </html>
